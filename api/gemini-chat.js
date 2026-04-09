@@ -60,17 +60,17 @@ export default async function handler(req, res) {
       tools: tools,
     });
 
-    const chatSession = model.startChat();
+   const chatSession = model.startChat();
     let result = await chatSession.sendMessage(message);
 
-    const call = result.response.functionCalls()?.[0];
+    // Canviem l'if per un while per gestionar múltiples crides seguides (ex: askKnowledge i després logUnresolved)
+    let call = result.response.functionCalls()?.[0];
 
-    if (call) {
+    while (call) {
       let functionResponseData = {};
       console.log(`[Gemini] Cridant projecte extern: ${call.name}`);
 
       if (call.name === "askKnowledge") {
-        // Cridem al teu projecte drive-knowledge-bridge
         const fetchRes = await fetch(URL_DRIVE, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -79,7 +79,6 @@ export default async function handler(req, res) {
         functionResponseData = await fetchRes.json();
       } 
       else if (call.name === "logUnresolvedQuestion") {
-        // Cridem al teu projecte gpt-sheets-logger
         const fetchRes = await fetch(URL_SHEETS, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -88,6 +87,14 @@ export default async function handler(req, res) {
         functionResponseData = await fetchRes.json();
       }
 
+      // 🔴 TRUC DE SEGURETAT: Gemini EXIGEIX que 'response' sigui un objecte JSON. 
+      // Si la teva API retornés un string, això ho arregla perquè no falli.
+      if (typeof functionResponseData !== 'object') {
+        functionResponseData = { data: functionResponseData };
+      }
+
+      console.log(`[Vercel] Enviant dades de ${call.name} de tornada a Gemini...`);
+
       // Retornem la info de Vercel a Gemini
       result = await chatSession.sendMessage([{
         functionResponse: {
@@ -95,11 +102,26 @@ export default async function handler(req, res) {
           response: functionResponseData
         }
       }]);
+
+      // Tornem a comprovar si Gemini vol fer una ALTRA crida abans de respondre
+      call = result.response.functionCalls()?.[0];
+    }
+
+    // Quan el while acaba, significa que Gemini ja no crida més eines i ens ha donat un text definitiu.
+    // L'enviem al Postman/Frontend!
+    
+    // Per si de cas, comprovem que realment hi hagi text
+    let textDefinitiu = "";
+    try {
+      textDefinitiu = result.response.text();
+    } catch (e) {
+      textDefinitiu = "Ho sento, hi ha hagut un error processant la informació final.";
+      console.error("Error extraient text:", e);
     }
 
     return res.status(200).json({
       success: true,
-      reply: result.response.text()
+      reply: textDefinitiu
     });
 
   } catch (error) {
