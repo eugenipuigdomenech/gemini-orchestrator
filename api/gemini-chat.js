@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     }
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-pro",
+      model: "gemini-pro-latest",
       systemInstruction: `Ets el Chatbot ${chatbot.toUpperCase()} de l'Escola Superior d'Enginyeries Industrial, Aeroespacial i Audiovisual de Terrassa (ESEIAAT - UPC).
 
 Missió:
