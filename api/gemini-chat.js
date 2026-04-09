@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     }
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash-latest",
+      model: "gemini-2.5-flash",
       systemInstruction: `Ets el Chatbot ${chatbot.toUpperCase()} de l'ESEIAAT. 
       Respon en l'idioma de l'usuari (preferentment català). 
       Utilitza ÚNICAMENT la informació obtinguda de l'eina askKnowledge. 
