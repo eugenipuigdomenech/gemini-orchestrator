@@ -4,7 +4,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // LES TEVES URLS DELS ALTRES PROJECTES (Canvia-les per les reals)
 const URL_DRIVE = "https://drive-knowledge-bridge.vercel.app/api/ask-knowledge";
-const URL_SHEETS = "https://gpt-sheets-logger.vercel.app/api/log-unresolved";
+const URL_SHEETS = "https://gpt-sheets-logger-ten.vercel.app/api/log-unresolved";
 
 const tools = [
   {
