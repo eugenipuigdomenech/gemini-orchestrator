@@ -80,23 +80,36 @@ PROTOCOL OBLIGATORI DE RESPOSTA (PAS A PAS):
       tools: tools,
     });
 
-   const chatSession = model.startChat();
+    const chatSession = model.startChat();
     let result = await chatSession.sendMessage(message);
 
-    // Canviem l'if per un while per gestionar múltiples crides seguides (ex: askKnowledge i després logUnresolved)
     let call = result.response.functionCalls()?.[0];
+    
+    // 🔴 AFEGIM EL FRE D'EMERGÈNCIA AQUÍ:
+    let voltes = 0;
+    const MAX_VOLTES = 3; 
 
-    while (call) {
+    while (call && voltes < MAX_VOLTES) { // 👈 Afegim la condició al while
+      voltes++; // 👈 Sumem 1 a cada volta
       let functionResponseData = {};
-      console.log(`[Gemini] Cridant projecte extern: ${call.name}`);
+      console.log(`[Gemini] Volta ${voltes}: Cridant projecte extern: ${call.name}`);
 
-      if (call.name === "askKnowledge") {
+if (call.name === "askKnowledge") {
         const fetchRes = await fetch(URL_DRIVE, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(call.args),
         });
-        functionResponseData = await fetchRes.json();
+        
+        // 🔴 Llegim la resposta com a text primer per si és un error HTML de Vercel
+        const rawText = await fetchRes.text();
+        try {
+          functionResponseData = JSON.parse(rawText);
+          console.log("[XIVATO DRIVE] Dades rebudes OK");
+        } catch (err) {
+          console.error(`[ERROR FATAL DRIVE] L'API de Drive ha retornat un error o HTML en lloc de JSON: ${rawText.substring(0, 100)}`);
+          functionResponseData = { error: "No s'ha pogut connectar amb la base de dades" };
+        }
       } 
       else if (call.name === "logUnresolvedQuestion") {
         const fetchRes = await fetch(URL_SHEETS, {
@@ -104,7 +117,15 @@ PROTOCOL OBLIGATORI DE RESPOSTA (PAS A PAS):
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...call.args, source: "gemini_api" }),
         });
-        functionResponseData = await fetchRes.json();
+        
+        // 🔴 Fem el mateix aquí
+        const rawText = await fetchRes.text();
+        try {
+          functionResponseData = JSON.parse(rawText);
+        } catch (err) {
+          console.error(`[ERROR FATAL SHEETS] L'API de Sheets ha retornat un error o HTML en lloc de JSON: ${rawText.substring(0, 100)}`);
+          functionResponseData = { error: "No s'ha pogut guardar el registre" };
+        }
       }
 
       // 🔴 TRUC DE SEGURETAT: Gemini EXIGEIX que 'response' sigui un objecte JSON. 
